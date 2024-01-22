@@ -1,10 +1,11 @@
 import express, { Request, Response } from 'express';
 import { createServer } from 'http';
 import { config } from 'dotenv';
-import { join, extname } from 'path';
+import { join, extname, parse } from 'path';
 import { readdirSync, readFile, existsSync, mkdirSync, writeFile, rename, createReadStream } from 'fs';
 import { IncomingForm, File } from 'formidable';
 import consolidate from 'consolidate';
+import { promisify } from 'util';
 
 config();
 
@@ -50,6 +51,8 @@ app.get('/pope' , (req, res, next) => {
     }
 })
 
+const textExt = [ 'js', 'java', 'hbs', 'py', 'c', 'cpp', 'php', 'html', 'css', 'ruby', 'swift','go', 'kotlin', 'typescript', 'scala', 'rust', 'shell', 'powershell','sql', 'r', 'perl', 'dart', 'lua', 'vb', 'matlab', 'groovy', 'haskell','cobol', 'fortran', 'scheme', 'prolog', 'jsx', 'tsx', 'vue', 'svelte','scss', 'sass', 'less', 'coffee', 'asm', 'json', 'xml', 'yaml', 'toml','ini', 'bat', 'sh', 'makefile', 'dockerfile', 'md', 'txt', 'cs']
+
 app.get('/file/:fileName', (req, res) => {
     const fileName = req.params.fileName;
     const filePath = join(uploadDir, fileName);
@@ -58,22 +61,48 @@ app.get('/file/:fileName', (req, res) => {
         if (err) {
             res.status(500).send('Błąd podczas odczytu pliku.');
         } else {
-            res.sendFile(`${filePath}`);
+            if(textExt.includes(extname(filePath).toLowerCase())){
+                readTextFile(filePath).then((fileContent) => {
+                    res.status(200).send(fileContent)
+                })
+                .catch((err) => {
+                    res.status(451).send(err)
+                    console.error(err)
+                })
+            } else {
+                res.status(200).sendFile(filePath)
+            }
         }
     });
 });
 
+app.get("/download/:fileName", (req, res) => {
+    const fileName = req.params.fileName;
+    const filePath = join(uploadDir, fileName)
+    res.download(filePath, fileName, (err) =>{
+        if(err){
+            console.error(err)
+            res.status(500).json({message: 'Error downloading file'})
+        }
+    })
+})
+
 const upload = async (req:Request, res: Response) => {
     try {
-        const form = new IncomingForm({allowEmptyFiles: true});
+        const form = new IncomingForm({allowEmptyFiles: true, minFileSize:0});
+        
       
-        form.parse(req, (err, field, file) => {
+        form.parse(req, (err, field, files) => {
             if (err) throw err;
-            if (!file.fileInput) return res.status(401).json({ message: 'No file Selected' });
-            file.fileInput.forEach((file) => {
-                const newFilepath = `${uploadDir}/${file.originalFilename}`;
+            if (!files.fileInput) return res.status(401).json({ message: 'No file Selected' });
+            for (const file of files.fileInput) {
+                if(file.size === 0){continue}
+                const originalFilename = file.originalFilename
+                const newFilepath = getUniqueFilePath(originalFilename);
+
+                // const newFilepath = `${uploadDir}/${file.originalFilename}`;
                 rename(file.filepath, newFilepath, err => err);
-            });
+            }
             return res.status(200).json({ message: ' File Uploaded ' });
         });
     }
@@ -110,3 +139,31 @@ app.use((err, req, res, next) => {
 httpServer.listen(process.env.PORT || 3000, () => {
     console.log(`Server is listening on http://localhost:${process.env.PORT || 3000}`);
 });
+
+// Other functions
+
+function getUniqueFilePath(fileName:string, directory:string = uploadDir) {
+    const baseFilePath = join(directory, fileName);
+    if(!existsSync(baseFilePath)) return baseFilePath;
+    let count = 1;
+    let newFilepath;
+    do{
+        const afterFIx = `.${count}`;
+        newFilepath = join(directory, `${parse(fileName).name}${afterFIx}${parse(fileName).ext}`);
+        count++;
+    }
+    while(existsSync(newFilepath))
+    return newFilepath;
+}
+
+function readTextFile(filePath: string):Promise<string> {
+    return new Promise((resolve, reject) => {
+        readFile(filePath, "utf-8", (err, data) => {
+            if(err) {
+                reject(err)
+            } else {
+                resolve(data)
+            }
+        })
+    })
+}

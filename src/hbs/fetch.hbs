@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Fetch files</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <script src="https://kit.fontawesome.com/367d653071.js" crossorigin="anonymous"></script>
     <style>
         body {
     font-family: 'Arial', sans-serif;
@@ -96,6 +98,98 @@ input[type="submit"]:hover {
         window.location.href = `/file/${fileName}`;
     }
 
+    function getFileExt(fileName){
+        return fileName.split(".").pop().toLowerCase();
+    }
+
+    function downloadFile(fileName){
+        fetch("/download/" + fileName).then(response => response.blob()).then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }).catch(error => console.error(error));
+    }
+
+    function getIconFileFromExt(fileName){
+        const fileExt = getFileExt(fileName);
+        switch(fileExt){
+            case 'jpg':
+            case 'jpeg':
+            case 'png':
+            case 'gif':
+                return `<i class="fa-solid fa-images" onclick="downloadFile('${fileName}')"></i>`;
+            case 'txt':
+                return `<i class="fa-solid fa-file-lines" onclick="downloadFile('${fileName}')"></i>`;
+            case 'zip':
+                return `<i class="fa-solid fa-file-zipper" onclick="downloadFile('${fileName}')"></i>`;
+            case 'mp4':
+            case 'mov':
+                return `<i class="fa-solid fa-file-video" onclick="downloadFile('${fileName}')"></i>`;
+            case 'js':
+            case 'jsc':
+                return `<i class="fa-brands fa-js" onclick="downloadFile('${fileName}')"></i>`;
+            case 'cs':
+            case 'js':
+            case 'java':
+            case 'py':
+            case 'c':
+            case 'cpp':
+            case 'php':
+            case 'html':
+            case 'css':
+            case 'ruby':
+            case 'swift':
+            case 'go':
+            case 'kotlin':
+            case 'ts':
+            case 'scala':
+            case 'rust':
+            case 'shell':
+            case 'bat':
+            case 'sql':
+            case 'r':
+            case 'perl':
+            case 'dart':
+            case 'lua':
+            case 'vb':
+            case 'cobol':
+            case 'fortran':
+            case 'scheme':
+            case 'prolog':
+            case 'jsx':
+            case 'tsx':
+            case 'vue':
+            case 'svelte':
+            case 'scss':
+            case 'sass':
+            case 'less':
+            case 'coffee':
+            case 'asm':
+            case 'json':
+            case 'xml':
+            case 'yaml':
+            case 'toml':
+            case 'ini':
+            case 'bat':
+            case 'sh':
+            case 'md':
+            case 'txt':
+                return `<i class="fa-solid fa-code" onclick="downloadFile('${fileName}')"></i>`;
+            case 'docx':
+            case 'doc':
+                return `<i class="fa-solid fa-file-word" onclick="downloadFile('${fileName}')"></i>`;
+            case 'pdf':
+                return `<i class="fa-solid fa-file-pdf" onclick="downloadFile('${fileName}')"></i>`;
+            default: 
+                return `<i class="fa-solid fa-question" onclick="downloadFile('${fileName}')"></i>`;
+        }
+    }
+
     // Pobranie listy plików
     fetch('/files')
             .then(response => response.json())
@@ -105,7 +199,9 @@ input[type="submit"]:hover {
                 // Generowanie listy plików
                 data.files.forEach(fileName => {
                     const listItem = document.createElement('li');
-                    listItem.textContent = fileName;
+
+                    const icon = getIconFileFromExt(fileName);
+                    listItem.innerHTML = `${icon} | ${fileName}`;
                     listItem.addEventListener('click', () => viewFile(fileName));
                     fileList.appendChild(listItem);
                 });
@@ -113,6 +209,8 @@ input[type="submit"]:hover {
             .catch(error => {
                 console.error('Error:', error);
             });
+
+
 </script>
 </body>
 </html>
